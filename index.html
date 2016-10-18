@@ -8,6 +8,7 @@
 
 		<link rel="stylesheet" href="css/reveal.css">
 		<link rel="stylesheet" href="css/theme/night.css">
+		<link rel="stylesheet" href="css/custom.css">
 
 		<!-- Theme used for syntax highlighting of code -->
 		<link rel="stylesheet" href="lib/css/zenburn.css">
@@ -64,7 +65,7 @@
 
 				<section>
 					<h3><p>basically... it pretends to be a user navigating through the UI to test UI feature functionality</h3>
-					<p class="fragment"> automated ;)</p>
+					<p class="fragment">"automated testing"</p>
 				</section>
 
 				<section>
@@ -85,7 +86,7 @@
 				<section>
 					<section>
 						<h2>creating a test</h2>
-<pre><code class="hljs" data-trim contenteditable>
+<pre><code class="hljs" id="big-code-block" data-trim contenteditable>
 	Feature: Check Layer Visibility
 
     Scenario: Open Hootenanny and Add Data
@@ -150,18 +151,181 @@ end
 </code></pre>
 
 <p class="fragment">written in Ruby+Capybara</p>
-<p class="fragment">relies on CSS selectors</p> <p class="fragment">...meaning you get friendly with the inspector tool ;)</p>
+<p class="fragment">relies on CSS selectors</p>
 					</section>
 
 					<section>
 						<h3>feature outline + step definition create a cucumber test</h3>
-						<p class="fragment">so from there you would run it</p>
-						<img class="fragment" src="images/cuke1.gif">
+						<pre><code class="hljs" data-trim contenteditable>
+Scenario: Open Hootenanny and Add Data
+    Given I am on Hootenanny
+    And I click Get Started
+    And I press "Add Reference Dataset"
+    And I click the "DcGisRoadsCucumber" Dataset
+    And I press "Add Layer"
+    Then I wait 15 "seconds" to see "span.strong" element with text "DcGisRoadsCucumber"
+    And I press "Add Secondary Dataset"
+    And I click the "DcOsmRoadsCucumber" Dataset
+    And I press "Add Layer"
+    Then I wait 15 "seconds" to see "span.strong" element with text "DcOsmRoadsCucumber"
+    </code></pre>
 					</section>
 
 					<section>
-						
+					<img src="images/add_data.gif">
 					</section>
+
+
+				<section data-markdown>
+					<script type="text/template">
+
+And I press "Add Reference Dataset"
+```
+When(/^I press "([^"]*)"$/) do |button|
+  click_link_or_button(button)
+end
+```
+
+And I click the "DcGisRoadsCucumber" Dataset
+```
+When(/^I click the "([^"]*)" Dataset$/) do |dataset|
+  text = page.find('text',:text=>dataset, :match => :prefer_exact)
+  parent = text.find(:xpath,"..")
+  parent.find('rect').click
+end
+```
+				</script>
+				</section>
+				<section data-markdown>
+					<script type="text/template">
+And I press "Add Layer":
+```
+When(/^I press "([^"]*)"$/) do |button|
+  click_link_or_button(button)
+end
+```
+
+Then I wait 15 "seconds" to see "span.strong" element with text "DcGisRoadsCucumber"
+```
+When(/^I wait ([0-9]*) "([^"]*)" to see "([^"]*)" element with text "([^"]*)"$/) do |timeout, unit, el, text|
+  if unit == "seconds"
+    multiplier = 1
+  elsif unit == "minutes"
+    multiplier = 60
+  else
+    throw :badunits
+  end
+  oldTimeout = Capybara.default_max_wait_time
+  Capybara.default_max_wait_time = Float(timeout) * multiplier
+  page.find(el, :text => text)
+  Capybara.default_max_wait_time = oldTimeout
+end
+```
+				
+					</script>
+					</section>
+
+					<section>
+						<h3>cucumber in action</h3>
+						<img src="images/cuke1.gif">
+					</section>
+
+					<section>
+					<img src="images/awesome.gif">
+					</section>
+					<section>
+					<img src="images/error.png">
+					<p class="fragment">but sometimes (and it will) it fails</p>
+					<p class="fragment">in which case it will spit out a screenshot of failed step</p>
+					</section>
+					<section>
+					<img src="images/scary_cucumber.gif">
+					</section>
+					<section>
+					<h3>why isn't my test passing?</h3>
+					<ul>
+						<li class="fragment">CSS is wrong</li>
+						<li class="fragment">your step isn't actually doing what you think it's doing</li>
+						<li class="fragment">step precursors haven't happened (like add data)</li>
+						<li class="fragment">modified custom steps broke other tests</li>
+					</ul>
+					</section>
+				</section>
+
+			<section>
+				<section>
+				<h3>what if my test is testing the same thing over and over...?</h3>
+				</section>
+					<section>
+					<img src="images/advanced_options.png" width="70%" height="70%">
+					</section>
+					<section>
+					invalid features include special characters, negative numbers, and letters.
+					<p class="fragment">copying and pasting scenarios to use different values quickly becomes tedious and repetitive</p>
+					</section>
+					<section>
+					<h3>scenario outlines</h3>
+
+					<p class="fragment">use of template with placeholders and an examples table</p>
+
+						<pre class="fragment"><code class="hljs" data-trim contenteditable>
+Scenario Outline: eating
+  Given there are < start > cucumbers
+  When I eat < eat > cucumbers
+  Then I should have < left > cucumbers
+
+  Examples:
+    | start | eat | left |
+    |  12   |  5  |  7   |
+    |  20   |  5  |  15  |
+</code></pre>
+
+<p class="fragment">https://github.com/cucumber/cucumber/wiki/Scenario-Outlines</p>
+					</section>
+
+					<section>
+						<pre><code class="hljs" id="big-code-block">
+Scenario Outline: Check for Invalid Inputs in Reference Advanced Options
+		Then I should see "< option name >"
+		Then I click on "#< option id >"
+		And I should see element "#< element >" with no value and placeholder < placeholder >
+		When I fill "#< element >" with "abc"
+		When I press enter in the "#< element >" input
+		Then I should see an invalid input warning for "#< element >"
+
+
+Examples:
+	| option name                | option id                             | element                            | placeholder |   
+	| Cleaning Options           | hoot_cleaning_options_label           | small_way_merger_threshold         | 15 | 
+	| General Conflation Options | hoot_general_conflation_options_label | unify_optimizer_time_limit         | 30 |
+	| General Conflation Options | hoot_general_conflation_options_label | element_cache_size_node            | 2000000 |
+	| General Conflation Options | hoot_general_conflation_options_label | element_cache_size_relation        | 200000 |
+	| General Conflation Options | hoot_general_conflation_options_label | element_cache_size_way             | 200000 |
+	| Waterway Options           | hoot_waterway_options_label           | waterway_way_angle_sample_distance | "20.0" |
+	| Waterway Options           | hoot_waterway_options_label           | waterway_way_matcher_heading_delta | "150.0" |
+	| Waterway Options           | hoot_waterway_options_label           | waterway_rubber_sheet_minimum_ties | 5 |
+			</pre></code>
+					</section>
+				</section>
+
+				<section>
+				<h3>Resources</h3>
+				<ul>
+					<li><a href="https://github.com/cucumber/cucumber/wiki/A-Table-Of-Content">Cucumber Wiki</a></li>
+
+					<li><a href="https://www.tutorialspoint.com/cucumber/index.htm">Cucumber Tutorial</li>
+
+					<li><a href="https://makandracards.com/makandra/18905-how-to-not-repeat-yourself-in-cucumber-scenarios">How to Not Repeat Yourself in Cucumber Scenarios</a></li>
+
+					<li><a href="https://blog.codecentric.de/en/2013/08/cucumber-setup-basics/">Cucumber Setup Basics</a></li>
+
+					<li><a href="https://www.amberbit.com/blog/2014/2/12/automate-tasks-on-the-web-with-ruby-and-capybara/">Automate Tasks on the Web with Ruby and Capybara</a></li>
+
+					
+				</ul>
+				</section>
+				<section>
+					<img src="images/kevin.jpg" width="30%" height="30%">
 				</section>
 			</div>
 		</div>
